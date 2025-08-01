@@ -22,10 +22,10 @@ func Start(ctx context.Context, results <-chan types.Result, wg *sync.WaitGroup)
 					return // channel closed
 				}
 				if res.Error != nil {
-					fmt.Printf("✗ job %d handled by worker %02d, ERROR: %v\n",
+					fmt.Printf("✗ job %d handled by worker %d, ERROR: %v\n",
 						res.JobID, res.WorkerID, res.Error)
 				} else {
-					fmt.Printf("✓ job %d handled by worker %02d\n",
+					fmt.Printf("✓ job %d handled by worker %d\n",
 						res.JobID, res.WorkerID)
 				}
 			}

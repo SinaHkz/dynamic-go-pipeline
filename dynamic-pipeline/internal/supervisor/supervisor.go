@@ -28,7 +28,8 @@ type Supervisor struct {
 	wg      *sync.WaitGroup
 
 	mu      sync.Mutex
-	workers []chan struct{} // per-worker stop channels
+	workers []chan struct{}
+	nextID  int // ← unique-ID counter
 }
 
 func New(cfg Config, parent context.Context,
@@ -40,16 +41,17 @@ func New(cfg Config, parent context.Context,
 }
 
 func (s *Supervisor) Start() {
-	// bootstrap min workers
-	s.workers = worker.Spawn(s.ctx, s.cfg.MinWorkers, s.jobs, s.results,
-		s.wg, s.cfg.FailureRate)
+	// Bootstrap the minimum workers.
+	s.workers = worker.Spawn(s.ctx, s.nextID, s.cfg.MinWorkers,
+		s.jobs, s.results, s.wg, s.cfg.FailureRate)
+	s.nextID += s.cfg.MinWorkers
 
 	ticker := time.NewTicker(s.cfg.CheckInterval)
 
 	s.wg.Add(1)
 	go func() {
 		defer func() {
-			close(s.results) // let collector finish
+			close(s.results)
 			s.wg.Done()
 		}()
 		for {
@@ -66,7 +68,6 @@ func (s *Supervisor) Start() {
 
 func (s *Supervisor) Stop() { s.cancel() }
 
-// scale up or down based on queue length.
 func (s *Supervisor) scale() {
 	q := len(s.jobs)
 
@@ -82,8 +83,9 @@ func (s *Supervisor) scale() {
 }
 
 func (s *Supervisor) add() {
-	stop := worker.Spawn(s.ctx, 1, s.jobs, s.results,
-		s.wg, s.cfg.FailureRate)[0]
+	stop := worker.Spawn(s.ctx, s.nextID, 1,
+		s.jobs, s.results, s.wg, s.cfg.FailureRate)[0]
+	s.nextID++
 	s.workers = append(s.workers, stop)
 	log.Printf("↑ added worker (total %d)", len(s.workers))
 }

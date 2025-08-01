@@ -36,8 +36,10 @@ func startOne(
 					return // channel closed
 				}
 
-				time.Sleep(time.Duration(100+rand.Intn(400)) * time.Millisecond) // 100–500 ms
+				// 1 – 5 s simulated processing
+				time.Sleep(time.Duration(1+rand.Intn(5)) * time.Second)
 
+				// Simulate occasional failure
 				var err error
 				if rand.Intn(failureRate) == 0 {
 					err = types.ErrJobFailed
@@ -50,10 +52,10 @@ func startOne(
 	}()
 }
 
-// Spawn creates n workers and returns their stop channels.
+// Spawn launches n workers whose IDs start at startID and increments by 1.
 func Spawn(
 	ctx context.Context,
-	n int,
+	startID, n int,
 	jobs <-chan types.Job,
 	results chan<- types.Result,
 	wg *sync.WaitGroup,
@@ -61,8 +63,9 @@ func Spawn(
 ) []chan struct{} {
 	stops := make([]chan struct{}, n)
 	for i := 0; i < n; i++ {
+		id := startID + i
 		stop := make(chan struct{})
-		startOne(ctx, i, jobs, results, stop, wg, failureRate)
+		startOne(ctx, id, jobs, results, stop, wg, failureRate)
 		stops[i] = stop
 	}
 	return stops
