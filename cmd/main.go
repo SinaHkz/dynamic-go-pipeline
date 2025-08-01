@@ -5,12 +5,12 @@ import (
 	"log"
 	"sync"
 
-	pipelineconfig "github.com/yourusername/pipeline-config"   // NEW
-	"github.com/yourusername/dynamic-pipeline/internal/collector"
-	"github.com/yourusername/dynamic-pipeline/internal/producer"
-	"github.com/yourusername/dynamic-pipeline/internal/shutdown"
-	"github.com/yourusername/dynamic-pipeline/internal/supervisor"
-	"github.com/yourusername/dynamic-pipeline/pkg/types"
+	pipelineconfig "github.com/SinaHkz/pipeline-config"
+	"github.com/SinaHkz/dynamic-pipeline/internal/collector"
+	"github.com/SinaHkz/dynamic-pipeline/internal/producer"
+	"github.com/SinaHkz/dynamic-pipeline/internal/shutdown"
+	"github.com/SinaHkz/dynamic-pipeline/internal/supervisor"
+	"github.com/SinaHkz/dynamic-pipeline/pkg/types"
 )
 
 func main() {
