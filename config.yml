@@ -1,0 +1,7 @@
+pipeline:
+  min_workers:      2
+  max_workers:      8
+  grow_threshold:   50
+  shrink_threshold: 10
+  check_interval:   1s   # Go time.Duration format
+  failure_rate:     10   # 1 in 10 jobs fails
