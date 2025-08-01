@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"dynamic-pipeline/pkg/backlog"
 	"dynamic-pipeline/pkg/types"
 )
 
-// startOne runs a single worker goroutine.
 func startOne(
 	ctx context.Context,
 	id int,
@@ -19,6 +19,7 @@ func startOne(
 	stop <-chan struct{},
 	wg *sync.WaitGroup,
 	failureRate int,
+	counter *backlog.Counter,
 ) {
 	wg.Add(1)
 	go func() {
@@ -33,13 +34,11 @@ func startOne(
 				return
 			case job, ok := <-jobs:
 				if !ok {
-					return // channel closed
+					return
 				}
 
-				// 1 – 5 s simulated processing
-				time.Sleep(time.Duration(1+rand.Intn(5)) * time.Second)
+				time.Sleep(time.Duration(1+rand.Intn(2)) * time.Second)
 
-				// Simulate occasional failure
 				var err error
 				if rand.Intn(failureRate) == 0 {
 					err = types.ErrJobFailed
@@ -47,12 +46,13 @@ func startOne(
 				}
 
 				results <- types.Result{JobID: job.ID, WorkerID: id, Error: err}
+				counter.Dec()
 			}
 		}
 	}()
 }
 
-// Spawn launches n workers whose IDs start at startID and increments by 1.
+
 func Spawn(
 	ctx context.Context,
 	startID, n int,
@@ -60,12 +60,13 @@ func Spawn(
 	results chan<- types.Result,
 	wg *sync.WaitGroup,
 	failureRate int,
+	counter *backlog.Counter,
 ) []chan struct{} {
 	stops := make([]chan struct{}, n)
 	for i := 0; i < n; i++ {
 		id := startID + i
 		stop := make(chan struct{})
-		startOne(ctx, id, jobs, results, stop, wg, failureRate)
+		startOne(ctx, id, jobs, results, stop, wg, failureRate, counter)
 		stops[i] = stop
 	}
 	return stops

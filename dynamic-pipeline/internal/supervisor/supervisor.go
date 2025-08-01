@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"dynamic-pipeline/internal/worker"
+	"dynamic-pipeline/pkg/backlog"
 	"dynamic-pipeline/pkg/types"
 )
 
@@ -26,34 +27,31 @@ type Supervisor struct {
 	jobs    chan types.Job
 	results chan types.Result
 	wg      *sync.WaitGroup
+	counter *backlog.Counter
 
 	mu      sync.Mutex
 	workers []chan struct{}
-	nextID  int // ← unique-ID counter
+	nextID  int
 }
 
 func New(cfg Config, parent context.Context,
-	jobs chan types.Job, results chan types.Result, wg *sync.WaitGroup) *Supervisor {
+	jobs chan types.Job, results chan types.Result,
+	wg *sync.WaitGroup, counter *backlog.Counter) *Supervisor {
 
 	ctx, cancel := context.WithCancel(parent)
 	return &Supervisor{cfg: cfg, ctx: ctx, cancel: cancel,
-		jobs: jobs, results: results, wg: wg}
+		jobs: jobs, results: results, wg: wg, counter: counter}
 }
 
 func (s *Supervisor) Start() {
-	// Bootstrap the minimum workers.
 	s.workers = worker.Spawn(s.ctx, s.nextID, s.cfg.MinWorkers,
-		s.jobs, s.results, s.wg, s.cfg.FailureRate)
+		s.jobs, s.results, s.wg, s.cfg.FailureRate, s.counter)
 	s.nextID += s.cfg.MinWorkers
 
 	ticker := time.NewTicker(s.cfg.CheckInterval)
-
 	s.wg.Add(1)
 	go func() {
-		defer func() {
-			close(s.results)
-			s.wg.Done()
-		}()
+		defer func() { close(s.results); s.wg.Done() }()
 		for {
 			select {
 			case <-s.ctx.Done():
@@ -69,22 +67,21 @@ func (s *Supervisor) Start() {
 func (s *Supervisor) Stop() { s.cancel() }
 
 func (s *Supervisor) scale() {
-	q := len(s.jobs)
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	backlog := s.counter.Load()
 
 	switch {
-	case q >= s.cfg.GrowThreshold && len(s.workers) < s.cfg.MaxWorkers:
+	case backlog >= int64(s.cfg.GrowThreshold) &&
+		len(s.workers) < s.cfg.MaxWorkers:
 		s.add()
-	case q <= s.cfg.ShrinkThreshold && len(s.workers) > s.cfg.MinWorkers:
+	case backlog <= int64(s.cfg.ShrinkThreshold) &&
+		len(s.workers) > s.cfg.MinWorkers:
 		s.remove()
 	}
 }
 
 func (s *Supervisor) add() {
 	stop := worker.Spawn(s.ctx, s.nextID, 1,
-		s.jobs, s.results, s.wg, s.cfg.FailureRate)[0]
+		s.jobs, s.results, s.wg, s.cfg.FailureRate, s.counter)[0]
 	s.nextID++
 	s.workers = append(s.workers, stop)
 	log.Printf("↑ added worker (total %d)", len(s.workers))

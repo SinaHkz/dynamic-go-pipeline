@@ -2,13 +2,12 @@ package collector
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"sync"
 
 	"dynamic-pipeline/pkg/types"
 )
 
-// Start prints every result; exits when results channel closes or ctx cancels.
 func Start(ctx context.Context, results <-chan types.Result, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
@@ -19,13 +18,13 @@ func Start(ctx context.Context, results <-chan types.Result, wg *sync.WaitGroup)
 				return
 			case res, ok := <-results:
 				if !ok {
-					return // channel closed
+					return
 				}
 				if res.Error != nil {
-					fmt.Printf("✗ job %d handled by worker %d, ERROR: %v\n",
+					log.Printf("✗ job %d handled by worker %d, ERROR: %v",
 						res.JobID, res.WorkerID, res.Error)
 				} else {
-					fmt.Printf("✓ job %d handled by worker %d\n",
+					log.Printf("✓ job %d handled by worker %d",
 						res.JobID, res.WorkerID)
 				}
 			}
