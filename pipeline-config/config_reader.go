@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ------------------------------ YAML schema ------------------------------
+// ─── YAML schema ───────────────────────────────────────────────────────────
 
 type Pipeline struct {
 	MinWorkers      int           `yaml:"min_workers"`
@@ -22,16 +22,16 @@ type Config struct {
 	Pipeline Pipeline `yaml:"pipeline"`
 }
 
-// ------------------------------ loader ------------------------------
+// ─── embedded YAML file ───────────────────────────────────────────────────
 
 //go:embed config.yml
 var raw []byte
 
-// Load unmarshals the embedded YAML into a Config struct.
+// Load unmarshals the embedded YAML into Config.
 func Load() (*Config, error) {
-	var cfg Config
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+	var c Config
+	if err := yaml.Unmarshal(raw, &c); err != nil {
 		return nil, err
 	}
-	return &cfg, nil
+	return &c, nil
 }
