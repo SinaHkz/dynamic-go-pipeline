@@ -1,7 +1,7 @@
 pipeline:
   min_workers:      2      # always keep at least this many workers
-  max_workers:      8      # never exceed this many workers
-  grow_threshold:   50     # if queue length ≥ this, add a worker
+  max_workers:      20      # never exceed this many workers
+  grow_threshold:   20     # if queue length ≥ this, add a worker
   shrink_threshold: 10     # if queue length ≤ this, remove a worker
   check_interval:   1s     # how often the supervisor checks the queue
   failure_rate:     10     # 1 out of N jobs fails (simulation)

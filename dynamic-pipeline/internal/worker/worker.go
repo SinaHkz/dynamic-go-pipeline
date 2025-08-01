@@ -11,10 +11,12 @@ import (
 	"dynamic-pipeline/pkg/types"
 )
 
+const maxRetries = 3 // NEW: max retry attempts per job
+
 func startOne(
 	ctx context.Context,
 	id int,
-	jobs <-chan types.Job,
+	jobs chan types.Job,
 	results chan<- types.Result,
 	stop <-chan struct{},
 	wg *sync.WaitGroup,
@@ -37,26 +39,35 @@ func startOne(
 					return
 				}
 
-				time.Sleep(time.Duration(1+rand.Intn(2)) * time.Second)
+				time.Sleep(time.Duration(1+rand.Intn(5)) * time.Second)
 
-				var err error
+				// Simulate failure
 				if rand.Intn(failureRate) == 0 {
-					err = types.ErrJobFailed
-					log.Printf("[worker %02d] job %d failed: %v", id, job.ID, err)
+					if job.RetryCount < maxRetries {
+						job.RetryCount++
+						log.Printf("[worker %02d] job %d failed, retrying (%d/%d)", id, job.ID, job.RetryCount, maxRetries)
+						jobs <- job // requeue the job
+						continue    // do NOT decrement backlog yet
+					} else {
+						log.Printf("[worker %02d] job %d permanently failed", id, job.ID)
+						results <- types.Result{JobID: job.ID, WorkerID: id, Error: types.ErrJobFailed}
+						counter.Dec()
+						continue
+					}
 				}
 
-				results <- types.Result{JobID: job.ID, WorkerID: id, Error: err}
+				// Successful case
+				results <- types.Result{JobID: job.ID, WorkerID: id, Error: nil}
 				counter.Dec()
 			}
 		}
 	}()
 }
 
-
 func Spawn(
 	ctx context.Context,
 	startID, n int,
-	jobs <-chan types.Job,
+	jobs chan types.Job,
 	results chan<- types.Result,
 	wg *sync.WaitGroup,
 	failureRate int,
