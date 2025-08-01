@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/yourusername/dynamic-pipeline/pkg/types"
+	"github.com/SinaHkz/dynamic-pipeline/pkg/types"
 )
 
 // Start prints every result.  When the results channel is closed and drained
