@@ -5,3 +5,6 @@ pipeline:
   shrink_threshold: 10     # if queue length ≤ this, remove a worker
   check_interval:   1s     # how often the supervisor checks the queue
   failure_rate:     10     # 1 out of N jobs fails (simulation)
+  error_window:     10s     # sliding window to measure error bursts
+  error_threshold:  10      # trigger shutdown if >= 10 errors within error_window
+

@@ -11,7 +11,7 @@ import (
 	"dynamic-pipeline/pkg/types"
 )
 
-const maxRetries = 3 // NEW: max retry attempts per job
+const maxRetries = 3 // adjust as you like
 
 func startOne(
 	ctx context.Context,
@@ -39,24 +39,38 @@ func startOne(
 					return
 				}
 
+				// Simulate processing time: 1–5 seconds
 				time.Sleep(time.Duration(1+rand.Intn(5)) * time.Second)
 
-				// Simulate failure
+				// Simulate a failure with probability 1/failureRate
 				if rand.Intn(failureRate) == 0 {
+					// Emit a failed result for THIS attempt so the error-rate sensor sees it
+					log.Printf("[worker %02d] job %d attempt failed (retryCount=%d/%d)", id, job.ID, job.RetryCount, maxRetries)
+					results <- types.Result{JobID: job.ID, WorkerID: id, Error: types.ErrJobFailed}
+
+					// Retry path (do NOT decrement backlog)
 					if job.RetryCount < maxRetries {
 						job.RetryCount++
-						log.Printf("[worker %02d] job %d failed, retrying (%d/%d)", id, job.ID, job.RetryCount, maxRetries)
-						jobs <- job // requeue the job
-						continue    // do NOT decrement backlog yet
-					} else {
-						log.Printf("[worker %02d] job %d permanently failed", id, job.ID)
-						results <- types.Result{JobID: job.ID, WorkerID: id, Error: types.ErrJobFailed}
-						counter.Dec()
+						// Requeue the job
+						select {
+						case <-ctx.Done():
+							return
+						case <-stop:
+							return
+						case jobs <- job:
+							// requeued
+						}
 						continue
 					}
+
+					// Permanent failure (we have already emitted an error result above)
+					log.Printf("[worker %02d] job %d permanently failed", id, job.ID)
+					// Decrement backlog now that this job is concluded
+					counter.Dec()
+					continue
 				}
 
-				// Successful case
+				// Success path
 				results <- types.Result{JobID: job.ID, WorkerID: id, Error: nil}
 				counter.Dec()
 			}
