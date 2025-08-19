@@ -86,11 +86,11 @@ func main() {
 		}
 	}()
 
-	log.Println("🚀 pipeline running — press Ctrl+C to start graceful drain")
+	log.Println("pipeline running — press Ctrl+C to start graceful drain")
 
 	// 8) Wait for Ctrl+C, then graceful drain:
 	<-sigCtx.Done()
-	log.Println("🛑 signal received — stopping producer, beginning drain")
+	log.Println("signal received — stopping producer, beginning drain")
 
 	// Stop producer & load generator (no new jobs will be added)
 	cancelProd()
@@ -114,5 +114,5 @@ func main() {
 
 	// Wait for collector to flush and exit
 	wg.Wait()
-	log.Println("--------------------------------------------------   graceful exit complete
+	log.Println("--------------------------------------------------   graceful exit complete")
 }
